@@ -124,4 +124,16 @@ end
 
 endmodule
 
+module full_adder2_tb;
+reg cin;
+reg [7:0] a,b;
+wire [7:0] s;
+full_adder2 U1 (a,b,cin,c,s);
 
+initial begin
+a=8'b1000_1011;
+b=8'b1000_1011;
+cin=1'b1;
+end
+
+endmodule
