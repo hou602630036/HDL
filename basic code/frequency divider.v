@@ -8,7 +8,8 @@
 			https://mp.weixin.qq.com/s/AbA8Mo3Lmqm3-yiFjKjR4Q
 			【偶数分频】
 			【奇数分频】如果不要求占空比，比如3分频，计数器可以设置成2高1低；
-						如果要求占空比，
+						如果要求占空比，7=3+4(低)，上升下降沿分别寄存clkn，clkp，两者相或
+						注意：如果低电平多，则或；如果高电平多，则与。
 			【小数分频】
 *Others:  
 *Function List:
@@ -76,6 +77,12 @@ clkn<=clkp;
 end
 
 assign clk_out = clkn | clkp;
+
+endmodule
+
+
+module divider_decimals (clk,rst,clk_out);
+
 
 endmodule
 
