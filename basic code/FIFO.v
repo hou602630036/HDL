@@ -19,7 +19,12 @@
 								2‘b01: 写指针又转了一圈，追上了读指针，FIFO满。
 								原理参考：https://blog.csdn.net/Lily_9/article/details/89326204
 								
-			【异步FIFO】FIFO_asy
+			【异步FIFO】FIFO_asy https://blog.csdn.net/alangaixiaoxiao/article/details/81432144
+								未测试，重点：clk_r和clk_w分别读和写操作，ptr正常增加和归零，这与同步相同。
+								每个rd_ptr和wr_ptr分别转换成格雷码，然后大量拍的方式分别传递到对方的时钟下，
+								empty和full即可使用assign判断。
+								判断读空时：需要读时钟域的格雷码rgray_next和被同步到读时钟域的写指针rd2_wp每一位完全相同;
+								判断写满时：需要写时钟域的格雷码wgray_next和被同步到写时钟域的读指针wr2_rp高两位不相同，其余各位完全相同；
 *Others:  
 *Function List:
 1.…………
@@ -114,7 +119,7 @@ assign full = ((rd_ptr[3:0]==wr_ptr[3:0]) && (rd_ptr[4]!=wr_ptr[4])) ? 1:0;
 endmodule
 
 
-module FIFO_tb;
+module FIFO_syn_tb;
 wire empty1,full1;
 wire empty2,full2;
 wire [7:0]dout1,dout2;
@@ -154,3 +159,60 @@ FIFO_syn2 U2 (clk,rst,din,dout2,wr_en,rd_en,empty2,full2);
 
 endmodule
 
+
+module FIFO_asy (clk_w,clk_r,rst,din,dout,wr_en,rd_en,empty,full);
+input clk_r,clk_w,rst,wr_en,rd_en;
+input [7:0] din;
+output [7:0] dout;
+reg  [7:0] dout;
+output empty,full;
+reg [3:0] wr_ptr,rd_ptr;
+reg [7:0] mem [15:0];
+wire [3:0] grey_wr_ptr,grey_rd_ptr;
+
+reg [3:0] grey_wr_ptr_d1,grey_wr_ptr_d2;
+reg [3:0] grey_rd_ptr_d1,grey_rd_ptr_d2;
+
+always @ (posedge clk_w , posedge rst) begin
+if (rst) begin
+		wr_ptr<='b0; 
+		end
+else begin
+		if (wr_en) begin
+			mem [wr_ptr] <= din;
+			wr_ptr <= (wr_ptr==15) ? 0 : wr_ptr+1;
+			end
+		else wr_ptr <= wr_ptr;
+end
+end
+
+always @ (posedge clk_r , posedge rst) begin
+if (rst) begin
+		rd_ptr<='b0; 
+		end
+else begin
+		if (rd_en) begin
+			dout <= mem [wr_ptr];
+			rd_ptr <= (rd_ptr==15) ? 0 : rd_ptr+1;
+			end
+		else rd_ptr <= rd_ptr;
+end
+end
+
+always @ (posedge clk_r) begin
+	grey_wr_ptr_d1 <= grey_wr_ptr;
+	grey_wr_ptr_d2 <= grey_wr_ptr_d1;
+end
+
+always @ (posedge clk_w) begin
+	grey_rd_ptr_d1 <= grey_rd_ptr;
+	grey_rd_ptr_d2 <= grey_rd_ptr_d1;
+end
+
+assign grey_wr_ptr = (wr_ptr>>1)^wr_ptr;
+assign grey_rd_ptr = (rd_ptr>>1)^rd_ptr;
+
+assign full = (grey_wr_ptr=={~grey_rd_ptr_d2[3:2],grey_rd_ptr_d2[1:0]});
+assign empty = (grey_rd_ptr==grey_wr_ptr_d2);
+
+endmodule
