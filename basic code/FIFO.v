@@ -1,7 +1,7 @@
 /*********************************************************************************
 *FileName:	FIFO
 *Author:	zongsheng hou
-*Version:	v1
+*Version:	v2
 *Date:  	2020.07.01
 *Description:  
 			【同步FIFO】FIFO_syn1 计数器决定空满的标志方式，但是耗费硬件资源（计数器）
@@ -20,8 +20,8 @@
 								原理参考：https://blog.csdn.net/Lily_9/article/details/89326204
 								
 			【异步FIFO】FIFO_asy https://blog.csdn.net/alangaixiaoxiao/article/details/81432144
-								未测试，重点：clk_r和clk_w分别读和写操作，ptr正常增加和归零，这与同步相同。
-								每个rd_ptr和wr_ptr分别转换成格雷码，然后大量拍的方式分别传递到对方的时钟下，
+								重点：clk_r和clk_w分别读和写操作，ptr正常增加和归零，这与同步相同。
+								每个rd_ptr和wr_ptr分别转换成格雷码，然后打拍的方式分别传递到对方的时钟下，
 								empty和full即可使用assign判断。
 								判断读空时：需要读时钟域的格雷码rgray_next和被同步到读时钟域的写指针rd2_wp每一位完全相同;
 								判断写满时：需要写时钟域的格雷码wgray_next和被同步到写时钟域的读指针wr2_rp高两位不相同，其余各位完全相同；
@@ -30,10 +30,7 @@
 1.…………
 2.…………
 *History:  //修改历史记录列表，每条修改记录应包含修改日期、修改者及修改内容简介
-1.Date:
-Author:
-Modification:
-2.…………
+	v2:加入了异步FIFO的tb，并进行了验证
 **********************************************************************************/
 
 module FIFO_syn1 (clk,rst,din,dout,wr_en,rd_en,empty,full);
@@ -214,5 +211,37 @@ assign grey_rd_ptr = (rd_ptr>>1)^rd_ptr;
 
 assign full = (grey_wr_ptr=={~grey_rd_ptr_d2[3:2],grey_rd_ptr_d2[1:0]});
 assign empty = (grey_rd_ptr==grey_wr_ptr_d2);
+
+endmodule
+
+module FIFO_asy_tb;
+reg clk_r,clk_w,rst,wr_en,rd_en;
+reg [7:0] din;
+wire [7:0] dout;
+wire empty,full;
+
+FIFO_asy U1 (clk_w,clk_r,rst,din,dout,wr_en,rd_en,empty,full);
+
+initial begin
+{clk_r,clk_w,rst,wr_en,rd_en}=5'b0;
+din = 8'd5;
+#7 rst=1;
+#20 rst=0;
+end
+
+always #5 clk_r=~clk_r;
+always #10 clk_w=~clk_w;
+
+initial fork
+begin
+#33 wr_en=1;
+#100 wr_en=0;
+end
+begin
+#53 rd_en=1;
+#10 rd_en=0;
+#100 rd_en=1;
+end
+join
 
 endmodule
